@@ -1,0 +1,23 @@
+# LS-DYNA input files (can be large)
+*.k
+*.key
+*.dyn
+
+# Parsed output
+parsed_model/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
