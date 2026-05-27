@@ -79,3 +79,64 @@ pip install lsdyna-mesh-reader numpy pandas pyvista
 - Unified NumPy export with zero-padded connectivity arrays
 - Automatic PyVista screenshots with beam orientation arrows
 - CLI entry point and `summary.json` metadata
+
+---
+
+## `convert_to_abaqus.py` — LS-DYNA → Abaqus INP converter
+
+Reads the binary `.npy` arrays produced by `mesh_data_reader_v0.py` and writes a single Abaqus `.inp` file.
+
+### Element mapping
+
+| LS-DYNA type | Abaqus element |
+|--------------|---------------|
+| Beam         | `B31`          |
+| Shell        | `S4R`          |
+| Solid        | `C3D8R`        |
+
+### What the output contains
+
+- `*Node` block — all nodes from `nodes.npy`
+- `*Element` blocks — one elset per PID (shells, solids) or per PID + orientation variant (beams)
+- `*Beam Section` — per elset, with the parsed orientation vector as the local n1-axis
+- `*Shell Section` — per elset, uniform thickness
+- `*Solid Section` — per elset
+- `*Material` — single elastic material
+- Commented-out `*Step` placeholder for adding BCs and loads
+
+### Configuration
+
+Edit the `CONFIGURATION` block at the top of `convert_to_abaqus.py` — no other changes needed:
+
+```python
+BINARY_DIR   = 'binary'          # path to .npy files
+OUTPUT_FILE  = 'model.inp'       # output path
+
+MATERIAL_NAME = 'STEEL'
+MATERIAL_E    = 200000.0         # Young's modulus (match model units)
+MATERIAL_NU   = 0.3
+
+BEAM_SECTION_TYPE        = 'PIPE'   # PIPE | CIRC | BOX | I | L
+BEAM_PIPE_OUTER_RADIUS   = 0.05
+BEAM_PIPE_WALL_THICKNESS = 0.005
+
+SHELL_THICKNESS = 0.01
+```
+
+To add a beam section type other than `PIPE`, add an `elif` branch in `_beam_section_data_line()`.
+
+### Usage
+
+Run after `mesh_data_reader_v0.py` has populated the `binary/` directory:
+
+```bash
+python convert_to_abaqus.py
+```
+
+Output: `model.inp` in the same directory as the script.
+
+### Beam orientation grouping
+
+Beams sharing the same PID but different orientation vectors are written to separate elsets (`BEAM_PID{n}`, `BEAM_PID{n}_1`, …) so each elset can have its own `*Beam Section` with the correct local n1-axis direction.
+
+> **Note:** Abaqus requires the n1-axis direction to be non-parallel to the beam axis. Verify the parsed orientation vectors are geometrically valid before submitting a job.
